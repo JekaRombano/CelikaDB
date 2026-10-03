@@ -225,32 +225,43 @@ class celikaFileManagementSystem():
     def writeLOG(self):
         project_directory_name = f"[{self.systemDefaultProjectDirectory.upper()}]_PROJECT_DIRECTORY"
         location_of_project_directory = f"{self.currentDirectory}/{project_directory_name}"
+        log_path = os.path.join(location_of_project_directory, "LOG", self.systemDefaultLOGName)
 
-        cd(f"{location_of_project_directory}/LOG")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
+        now = datetime.now()
+
+        # your log template
         templateLog = [{
             "Database": "CELIKA DB",
             "VERSION CONTROL": 1.1,
             "FileName": self.systemDefaultLOGName,
-            "DateCreated": datetime.now().strftime("%Y-%m-%d"),
-            "TimeCreated": datetime.now().strftime("%H:%M:%S"),
-            "Last Updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "DateCreated": now.strftime("%Y-%m-%d"),
+            "TimeCreated": now.strftime("%H:%M:%S"),
+            "Last Updated": now.strftime("%Y-%m-%d %H:%M:%S")
         }]
 
+        # read the existing log (if it is valid, keep it so DateCreated/TimeCreated are preserved)
         try:
-            with open(self.systemDefaultLOGName, "r") as Datafilenameread:
+            with open(log_path, "r") as file:
+                existingLog = json.load(file)
 
-                read = json.load(Datafilenameread)
-
-                read[0]["Last Updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                templateLog = read
-
+            if (
+                isinstance(existingLog, list)
+                and existingLog
+                and isinstance(existingLog[0], dict)
+                and "FileName" in existingLog[0]
+                and "DateCreated" in existingLog[0]
+            ):
+                templateLog = existingLog
         except (FileNotFoundError, json.JSONDecodeError):
-            pass
+            pass  # missing or corrupted: use the fresh template
 
-        with open(self.systemDefaultLOGName, "w") as Datafilename:
-            json.dump(templateLog, Datafilename, indent=2)
+        # update only the last updated timestamp
+        templateLog[0]["Last Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
+
+        with open(log_path, "w") as file:
+            json.dump(templateLog, file, indent=2)
 
     def readData(self):
         """
